@@ -1,0 +1,110 @@
+import java.io.*;
+import java.util.*;
+
+public class JackTokenizer {
+
+    private String input;
+    private int pos;
+    private String currentToken;
+    private String currentType;
+
+    private static final Set<String> KEYWORDS = new HashSet<>(Arrays.asList(
+        "class","constructor","function","method","field","static",
+        "var","int","char","boolean","void","true","false","null",
+        "this","let","do","if","else","while","return"
+    ));
+
+    private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
+        '{','}','(',')','[',']','.',',',';',
+        '+','-','*','/','&','|','<','>','=','~'
+    ));
+
+    public JackTokenizer(String filename) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        BufferedReader reader = new BufferedReader(new FileReader(filename));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        input = removeComments(sb.toString());
+        pos = 0;
+    }
+
+    private String removeComments(String src) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        while (i < src.length()) {
+            // block comment
+            if (i + 1 < src.length() && src.charAt(i) == '/' && src.charAt(i+1) == '*') {
+                i += 2;
+                while (i + 1 < src.length() && !(src.charAt(i) == '*' && src.charAt(i+1) == '/')) i++;
+                i += 2;
+            }
+            // line comment
+            else if (i + 1 < src.length() && src.charAt(i) == '/' && src.charAt(i+1) == '/') {
+                while (i < src.length() && src.charAt(i) != '\n') i++;
+            }
+            // string literal
+            else if (src.charAt(i) == '"') {
+                int j = i;
+                out.append(src.charAt(j++));
+                while (j < src.length() && src.charAt(j) != '"') out.append(src.charAt(j++));
+                if (j < src.length()) out.append(src.charAt(j++));
+                i = j;
+            }
+            else {
+                out.append(src.charAt(i++));
+            }
+        }
+        return out.toString();
+    }
+
+    public boolean hasMoreTokens() {
+        int i = pos;
+        while (i < input.length() && Character.isWhitespace(input.charAt(i))) i++;
+        return i < input.length();
+    }
+
+    public void advance() {
+        // skip whitespace
+        while (pos < input.length() && Character.isWhitespace(input.charAt(pos))) pos++;
+        if (pos >= input.length()) return;
+
+        char c = input.charAt(pos);
+
+        // string constant
+        if (c == '"') {
+            pos++;
+            StringBuilder sb = new StringBuilder();
+            while (pos < input.length() && input.charAt(pos) != '"') sb.append(input.charAt(pos++));
+            pos++;
+            currentToken = sb.toString();
+            currentType = "stringConstant";
+        }
+        // symbol
+        else if (SYMBOLS.contains(c)) {
+            currentToken = String.valueOf(c);
+            currentType = "symbol";
+            pos++;
+        }
+        // integer
+        else if (Character.isDigit(c)) {
+            StringBuilder sb = new StringBuilder();
+            while (pos < input.length() && Character.isDigit(input.charAt(pos))) sb.append(input.charAt(pos++));
+            currentToken = sb.toString();
+            currentType = "integerConstant";
+        }
+        // keyword or identifier
+        else {
+            StringBuilder sb = new StringBuilder();
+            while (pos < input.length() && (Character.isLetterOrDigit(input.charAt(pos)) || input.charAt(pos) == '_'))
+                sb.append(input.charAt(pos++));
+            currentToken = sb.toString();
+            currentType = KEYWORDS.contains(currentToken) ? "keyword" : "identifier";
+        }
+    }
+
+    public String tokenType()    { return currentType; }
+    public String currentToken() { return currentToken; }
+}
