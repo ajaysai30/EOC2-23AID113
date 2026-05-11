@@ -1,0 +1,49 @@
+import java.io.*;
+import java.util.*;
+
+public class JackAnalyzer {
+
+    public static void main(String[] args) throws IOException {
+        if (args.length == 0) {
+            System.out.println("Usage: java JackAnalyzer <file.jack or folder>");
+            return;
+        }
+
+        File input = new File(args[0]);
+
+        // if folder, process all .jack files inside
+        if (input.isDirectory()) {
+            for (File f : input.listFiles()) {
+                if (f.getName().endsWith(".jack")) {
+                    processFile(f.getPath());
+                }
+            }
+        } else {
+            processFile(input.getPath());
+        }
+    }
+
+    private static void processFile(String jackFile) throws IOException {
+        String outputFile = jackFile.replace(".jack", "T.xml");
+        JackTokenizer tokenizer = new JackTokenizer(jackFile);
+        PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
+
+        writer.println("<tokens>");
+        while (tokenizer.hasMoreTokens()) {
+            tokenizer.advance();
+            String type  = tokenizer.tokenType();
+            String token = xmlEscape(tokenizer.currentToken());
+            writer.println("  <" + type + "> " + token + " </" + type + ">");
+        }
+        writer.println("</tokens>");
+        writer.close();
+
+        System.out.println("Done! Output -> " + outputFile);
+    }
+
+    private static String xmlEscape(String s) {
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+}
